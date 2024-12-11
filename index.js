@@ -677,20 +677,41 @@ const parseEnvArgv = () => {
     // 解析每个账号的配置
     const accounts = accountsArray.map(accountStr => {
       const params = new URLSearchParams(accountStr);
-      return {
+      
+      // 基础配置
+      const account = {
         username: params.get('username'),
         password: params.get('password'),
         reSign: params.get('reSign') === 'true',
         needReport: params.get('needReport') === 'true',
         sign: true, // 默认开启签到
-        openId: "ooru94n9YbbtizeXFfjC5RtUUsvU", // 默认 OpenId
-        unionId: "oHY-uwcVrvMByxaF9hkL9e22bBwE", // 默认 UnionId
       };
+
+      // 如果配置中包含 openid，则使用配置的值，否则使用默认值
+      if (params.get('openid')) {
+        account.openId = params.get('openid');
+      } else {
+        account.openId = "ooru94n9YbbtizeXFfjC5RtUUsvU"; // 默认 OpenId
+        console.warn(`警告: 账号 ${account.username} 未设置 openid，使用默认值`);
+      }
+
+      // 如果配置中包含 unionid，则使用配置的值，否则使用默认值
+      if (params.get('unionid')) {
+        account.unionId = params.get('unionid');
+      } else {
+        account.unionId = "oHY-uwcVrvMByxaF9hkL9e22bBwE"; // 默认 UnionId
+        console.warn(`警告: 账号 ${account.username} 未设置 unionid，使用默认值`);
+      }
+
+      return account;
     });
 
+    // 打印解析后的账号信息（隐藏敏感信息）
     console.log("解析到的账号信息:", accounts.map(acc => ({
       ...acc,
-      password: '******' // 隐藏密码
+      password: '******', // 隐藏密码
+      openId: acc.openId.substring(0, 8) + '****', // 部分隐藏 openId
+      unionId: acc.unionId.substring(0, 8) + '****' // 部分隐藏 unionId
     })));
 
     return {
@@ -699,6 +720,7 @@ const parseEnvArgv = () => {
     };
   } catch (error) {
     console.error("解析 XYB 配置时出错:", error);
+    console.error("错误详情:", error.message);
     return false;
   }
 };
