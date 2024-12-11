@@ -664,13 +664,17 @@ ${result}`;
 }
 
 const parseEnvArgv = () => {
+  // 优先检查环境变量
   const accountsStr = process.env.XYB;
+  
+  // 如果没有环境变量配置，返回 null 以使用 config.js
   if (!accountsStr) {
-    console.error("请在 GitHub Secrets 中设置 XYB");
-    return false;
+    console.log("未检测到环境变量配置，将使用 config.js");
+    return null;
   }
 
   try {
+    console.log("====使用 GitHub Actions 配置====");
     // 将配置字符串按分号分割成多个账号
     const accountsArray = accountsStr.split(';').filter(Boolean);
     
@@ -687,31 +691,32 @@ const parseEnvArgv = () => {
         sign: true, // 默认开启签到
       };
 
-      // 如果配置中包含 openid，则使用配置的值，否则使用默认值
+      // 如果配置中包含 openid，则使用配置的值
       if (params.get('openid')) {
         account.openId = params.get('openid');
-      } else {
-        account.openId = "ooru94n9YbbtizeXFfjC5RtUUsvU"; // 默认 OpenId
-        console.warn(`警告: 账号 ${account.username} 未设置 openid，使用默认值`);
       }
 
-      // 如果配置中包含 unionid，则使用配置的值，否则使用默认值
+      // 如果配置中包含 unionid，则使用配置的值
       if (params.get('unionid')) {
         account.unionId = params.get('unionid');
-      } else {
-        account.unionId = "oHY-uwcVrvMByxaF9hkL9e22bBwE"; // 默认 UnionId
-        console.warn(`警告: 账号 ${account.username} 未设置 unionid，使用默认值`);
+      }
+
+      // 验证必要字段
+      if (!account.username || !account.password) {
+        throw new Error(`账号配置不完整: ${accountStr}`);
       }
 
       return account;
     });
 
     // 打印解析后的账号信息（隐藏敏感信息）
-    console.log("解析到的账号信息:", accounts.map(acc => ({
-      ...acc,
-      password: '******', // 隐藏密码
-      openId: acc.openId.substring(0, 8) + '****', // 部分隐藏 openId
-      unionId: acc.unionId.substring(0, 8) + '****' // 部分隐藏 unionId
+    console.log("成功解析账号信息:", accounts.map(acc => ({
+      username: acc.username,
+      password: '******',
+      openId: acc.openId ? (acc.openId.substring(0, 8) + '****') : '未设置',
+      unionId: acc.unionId ? (acc.unionId.substring(0, 8) + '****') : '未设置',
+      reSign: acc.reSign,
+      needReport: acc.needReport
     })));
 
     return {
@@ -719,9 +724,9 @@ const parseEnvArgv = () => {
       accounts
     };
   } catch (error) {
-    console.error("解析 XYB 配置时出错:", error);
+    console.error("解析 GitHub Actions 配置时出错:", error);
     console.error("错误详情:", error.message);
-    return false;
+    return null;
   }
 };
 
@@ -730,7 +735,7 @@ async function run() {
 
   let processConfig = parseEnvArgv();
   if (processConfig) {
-    console.log("====使用命令行配置====");
+    console.log("====使用 GitHub Actions 配置====");
     const confTemp = {
       username: "",
       password: "",
@@ -753,11 +758,10 @@ async function run() {
     processConfig.modeCN = modeMap[processConfig.mode];
     config = processConfig;
   } else {
-    console.log("====使用config.js中配置====");
+    console.log("====使用 config.js 配置====");
   }
 
   for (const account of config.accounts) {
-    // console.log(account);
     account.mode = config.mode;
     account.modeCN = config.modeCN;
     account.password = md5(account.password);
