@@ -664,17 +664,41 @@ ${result}`;
 }
 
 const parseEnvArgv = () => {
-  const accountsJson = process.env.ACCOUNTS;
-  if (!accountsJson) {
-    console.error("请在 GitHub Secrets 中设置 ACCOUNTS");
+  const accountsStr = process.env.XYB;
+  if (!accountsStr) {
+    console.error("请在 GitHub Secrets 中设置 XYB");
     return false;
   }
 
   try {
-    const accounts = JSON.parse(accountsJson);
-    return { accounts };
+    // 将配置字符串按分号分割成多个账号
+    const accountsArray = accountsStr.split(';').filter(Boolean);
+    
+    // 解析每个账号的配置
+    const accounts = accountsArray.map(accountStr => {
+      const params = new URLSearchParams(accountStr);
+      return {
+        username: params.get('username'),
+        password: params.get('password'),
+        reSign: params.get('reSign') === 'true',
+        needReport: params.get('needReport') === 'true',
+        sign: true, // 默认开启签到
+        openId: "ooru94n9YbbtizeXFfjC5RtUUsvU", // 默认 OpenId
+        unionId: "oHY-uwcVrvMByxaF9hkL9e22bBwE", // 默认 UnionId
+      };
+    });
+
+    console.log("解析到的账号信息:", accounts.map(acc => ({
+      ...acc,
+      password: '******' // 隐藏密码
+    })));
+
+    return {
+      mode: "in", // 默认签到模式
+      accounts
+    };
   } catch (error) {
-    console.error("解析 ACCOUNTS 时出错:", error);
+    console.error("解析 XYB 配置时出错:", error);
     return false;
   }
 };
