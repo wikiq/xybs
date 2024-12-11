@@ -634,7 +634,7 @@ async function xybSign(config) {
         Math.sin(originalLatitudeRadians) * Math.sin(newLatitudeRadians)
       );
 
-    // 将���的经纬度坐标转换为度数，并保留与传入参数相同的小数位数
+    // 将的经纬度坐标转换为度数，并保留与传入参数相同的小数位数
     const newLatitude = parseFloat(newLatitudeRadians * (180 / Math.PI));
     const newLongitude = parseFloat(newLongitudeRadians * (180 / Math.PI));
 
@@ -663,56 +663,26 @@ ${result}`;
   return results;
 }
 
-const parseEnvArgv = (argv) => {
-  const arguments = argv;
-  let res = {
-    accounts: [],
-  };
-
-  if (!argv[2]) {
+const parseEnvArgv = () => {
+  const accountsJson = process.env.ACCOUNTS;
+  if (!accountsJson) {
+    console.error("请在 GitHub Secrets 中设置 ACCOUNTS");
     return false;
   }
-  const configStrArr = argv[2].split(";");
-  const accountStrs = [];
-  const configStrs = [];
-  for (const confStr of configStrArr) {
-    if (!confStr) {
-      continue;
-    }
-    if (confStr.includes("username")) {
-      accountStrs.push(confStr);
-    } else {
-      configStrs.push(confStr);
-    }
+
+  try {
+    const accounts = JSON.parse(accountsJson);
+    return { accounts };
+  } catch (error) {
+    console.error("解析 ACCOUNTS 时出错:", error);
+    return false;
   }
-  for (const acStr of accountStrs) {
-    const info = {};
-    const acs = acStr.split("&");
-    for (const c of acs) {
-      const cache = c.split("=");
-      if (
-        cache[0] == "sign" ||
-        cache[0] == "reSign" ||
-        cache[0] == "needReport"
-      ) {
-        info[cache[0]] = cache[1] == "true" ? true : false;
-      } else {
-        info[cache[0]] = cache[1];
-      }
-    }
-    res.accounts.push(info);
-  }
-  for (const cfs of configStrs) {
-    const cache = cfs.split("=");
-    res[cache[0]] = cache[1];
-  }
-  return res;
 };
 
 async function run() {
   let results = [];
 
-  let processConfig = parseEnvArgv(process.argv);
+  let processConfig = parseEnvArgv();
   if (processConfig) {
     console.log("====使用命令行配置====");
     const confTemp = {
