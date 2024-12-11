@@ -664,17 +664,24 @@ ${result}`;
 }
 
 const parseEnvArgv = () => {
-  // 优先检查环境变量
-  const accountsStr = process.env.XYB;
+  // 检查命令行参数和环境变量
+  const accountsStr = process.argv[2] || process.env.XYB;
   
-  // 如果没有环境变量配置，返回 null 以使用 config.js
+  // 添加调试信息
+  console.log("配置信息检查：", {
+    hasCommandLineArg: !!process.argv[2],
+    hasEnvVar: !!process.env.XYB,
+    argvLength: process.argv.length,
+  });
+
   if (!accountsStr) {
-    console.log("未检测到环境变量配置，将使用 config.js");
+    console.error("未找到配置信息");
+    console.error("请通过命令行参数或环境变量 XYB 提供配置");
     return null;
   }
 
   try {
-    console.log("====使用 GitHub Actions 配置====");
+    console.log("====使用传入的配置====");
     // 将配置字符串按分号分割成多个账号
     const accountsArray = accountsStr.split(';').filter(Boolean);
     
@@ -688,15 +695,13 @@ const parseEnvArgv = () => {
         password: params.get('password'),
         reSign: params.get('reSign') === 'true',
         needReport: params.get('needReport') === 'true',
-        sign: true, // 默认开启签到
+        sign: true,
       };
 
-      // 如果配置中包含 openid，则使用配置的值
+      // 处理 openid 和 unionid
       if (params.get('openid')) {
         account.openId = params.get('openid');
       }
-
-      // 如果配置中包含 unionid，则使用配置的值
       if (params.get('unionid')) {
         account.unionId = params.get('unionid');
       }
@@ -710,7 +715,8 @@ const parseEnvArgv = () => {
     });
 
     // 打印解析后的账号信息（隐藏敏感信息）
-    console.log("成功解析账号信息:", accounts.map(acc => ({
+    console.log("成功解析账号数量:", accounts.length);
+    console.log("账号信息:", accounts.map(acc => ({
       username: acc.username,
       password: '******',
       openId: acc.openId ? (acc.openId.substring(0, 8) + '****') : '未设置',
@@ -720,11 +726,11 @@ const parseEnvArgv = () => {
     })));
 
     return {
-      mode: "in", // 默认签到模式
+      mode: "in",
       accounts
     };
   } catch (error) {
-    console.error("解析 GitHub Actions 配置时出错:", error);
+    console.error("解析配置时出错:", error);
     console.error("错误详情:", error.message);
     return null;
   }
@@ -735,7 +741,7 @@ async function run() {
 
   let processConfig = parseEnvArgv();
   if (processConfig) {
-    console.log("====使用 GitHub Actions 配置====");
+    console.log("====使用传入的配置====");
     const confTemp = {
       username: "",
       password: "",
